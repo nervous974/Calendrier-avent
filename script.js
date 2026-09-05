@@ -33,6 +33,11 @@
     }
   }
 
+  function isStreamerMode() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("streamer") === "1";
+  }
+
   function getUnlockedDay() {
     // Permet de tester le calendrier hors décembre : ajoute ?day=12 dans l'URL
     // (ex: fichier ouvert dans un navigateur, ou URL de la source OBS).
@@ -58,10 +63,15 @@
   function buildGrid(unlockedDay) {
     const grid = document.getElementById("calendar-grid");
     grid.innerHTML = "";
+    const streamerMode = isStreamerMode();
 
     for (let day = 1; day <= TOTAL_DAYS; day++) {
       const data = CALENDAR_CONTENT.find((entry) => entry.day === day) || {};
-      const isUnlocked = day <= unlockedDay;
+      const isDateUnlocked = day <= unlockedDay;
+      // Sur un jour de stream, la case attend d'être révélée en live (sauf en mode streamer)
+      const isWaitingForLive =
+        data.isStreamDay && !data.revealed && !streamerMode;
+      const isUnlocked = isDateUnlocked && !isWaitingForLive;
 
       const cell = document.createElement("button");
       cell.className = "day-cell" + (isUnlocked ? " unlocked" : " locked");
@@ -73,10 +83,17 @@
         cell.classList.add("stream-day");
       }
 
+      let icon = "🔒";
+      if (isUnlocked) {
+        icon = "🎁";
+      } else if (isDateUnlocked && isWaitingForLive) {
+        icon = "⏳"; // date passée, en attente de l'ouverture en direct
+      }
+
       cell.innerHTML = `
         <span class="day-number">${day}</span>
         ${data.isStreamDay ? '<span class="stream-star" title="Jour de stream">✨</span>' : ""}
-        <span class="day-icon">${isUnlocked ? "🎁" : "🔒"}</span>
+        <span class="day-icon">${icon}</span>
       `;
 
       if (isUnlocked) {
