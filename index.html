@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Calendrier de l'Avent</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="calendar-root">
+      <div id="calendar-panel">
+        <div id="snow-container"></div>
+
+        <header id="calendar-header">
+          <div class="lights-string" aria-hidden="true"></div>
+          <h1>🎄 Calendrier de l'Avent 🎄</h1>
+          <p id="calendar-subtitle">Décembre</p>
+        </header>
+
+        <div id="calendar-grid"></div>
+
+        <div id="reveal-overlay" class="hidden">
+          <div id="reveal-box">
+            <button id="reveal-close" aria-label="Fermer">✕</button>
+
+            <div id="gift-animation">
+              <span id="gift-emoji">🎁</span>
+              <div id="confetti-burst"></div>
+            </div>
+
+            <div id="reveal-content" class="hidden">
+              <div id="reveal-day-badge"></div>
+              <h2 id="reveal-title"></h2>
+              <div id="reveal-body"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="content.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
