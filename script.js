@@ -1,3 +1,20 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  GoogleAuthProvider,
+  getAuth,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {
+  collection,
+  doc,
+  getFirestore,
+  onSnapshot,
+  setDoc,
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { firebaseConfig } from "./firebase-config.js";
+
 // ============================================================================
 // LOGIQUE DU CALENDRIER — pas besoin d'y toucher pour changer le contenu,
 // modifie plutôt content.js
@@ -5,6 +22,11 @@
 
 (function () {
   const TOTAL_DAYS = 24;
+  const firebaseApp = initializeApp(firebaseConfig);
+  const auth = getAuth(firebaseApp);
+  const db = getFirestore(firebaseApp);
+  const revealedStreamDays = new Set();
+  let currentUser = null;
 
   function createSnow(flakeCount) {
     const container = document.getElementById("snow-container");
@@ -38,6 +60,21 @@
     return params.get("streamer") === "1";
   }
 
+  function isAdminMode() {
+    const params = new URLSearchParams(window.location.search);
+    return isStreamerMode() && params.get("admin") === "1";
+  }
+
+  function isTestMode() {
+    return new URLSearchParams(window.location.search).has("day");
+  }
+
+  function setSyncStatus(message, isError = false) {
+    const status = document.getElementById("firebase-sync-status");
+    status.textContent = message;
+    status.classList.toggle("firebase-error", isError);
+  }
+
   function getUnlockedDay() {
     // Permet de tester le calendrier hors décembre : ajoute ?day=12 dans l'URL
     // (ex: fichier ouvert dans un navigateur, ou URL de la source OBS).
@@ -66,11 +103,11 @@
     const streamerMode = isStreamerMode();
 
     for (let day = 1; day <= TOTAL_DAYS; day++) {
-      const data = CALENDAR_CONTENT.find((entry) => entry.day === day) || {};
+      const data = window.CALENDAR_CONTENT.find((entry) => entry.day === day) || {};
       const isDateUnlocked = day <= unlockedDay;
       // Sur un jour de stream, la case attend d'être révélée en live (sauf en mode streamer)
       const isWaitingForLive =
-        data.isStreamDay && !data.revealed && !streamerMode;
+        data.isStreamDay && !revealedStreamDays.has(day) && !streamerMode;
       const isUnlocked = isDateUnlocked && !isWaitingForLive;
 
       const cell = document.createElement("button");
@@ -97,11 +134,40 @@
       `;
 
       if (isUnlocked) {
-        cell.addEventListener("click", () => openReveal(day, data));
+        cell.addEventListener("click", () => handleDayClick(day, data));
       }
 
       grid.appendChild(cell);
     }
+  }
+
+  async function handleDayClick(day, data) {
+    if (
+      data.isStreamDay &&
+      isAdminMode() &&
+      !isTestMode() &&
+      !revealedStreamDays.has(day)
+    ) {
+      if (!currentUser) {
+        document.getElementById("firebase-auth-status").textContent =
+          "Connecte-toi avec Google avant de révéler une case.";
+        return;
+      }
+
+      setSyncStatus(`Publication de la case ${day}…`);
+      try {
+        await setDoc(doc(db, "reveals", String(day)), { revealed: true });
+      } catch (error) {
+        console.error("Impossible de publier la case dans Firestore.", error);
+        setSyncStatus(
+          `Échec de publication : ${error.message}. Vérifie les règles Firestore.`,
+          true,
+        );
+      }
+      return;
+    }
+
+    openReveal(day, data);
   }
 
   const GIFT_DROP_DURATION = 700;
@@ -244,7 +310,85 @@
     if (event.key === "Escape") closeReveal();
   });
 
+  const controls = document.getElementById("firebase-controls");
+  const signInButton = document.getElementById("firebase-sign-in");
+  const signOutButton = document.getElementById("firebase-sign-out");
+  if (isAdminMode()) {
+    controls.hidden = false;
+    signInButton.addEventListener("click", async () => {
+      try {
+        await signInWithPopup(auth, new GoogleAuthProvider());
+      } catch (error) {
+        console.error("La connexion Google a échoué.", error);
+        document.getElementById("firebase-auth-status").textContent =
+          `Connexion impossible : ${error.message}`;
+      }
+    });
+    signOutButton.addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+      } catch (error) {
+        console.error("La déconnexion Firebase a échoué.", error);
+        document.getElementById("firebase-auth-status").textContent =
+          `Déconnexion impossible : ${error.message}`;
+      }
+    });
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      signInButton.hidden = Boolean(user);
+      signOutButton.hidden = !user;
+      document.getElementById("firebase-auth-status").textContent = user
+        ? `Connecté : ${user.email || "compte Google"}`
+        : "Non connecté — connecte-toi pour révéler les cases de stream.";
+    });
+  }
+
+  let initialSnapshotReceived = false;
+  onSnapshot(
+    collection(db, "reveals"),
+    { includeMetadataChanges: true },
+    (snapshot) => {
+      const previousReveals = new Set(revealedStreamDays);
+      revealedStreamDays.clear();
+      snapshot.forEach((entry) => {
+        const day = Number(entry.id);
+        const data = window.CALENDAR_CONTENT.find(
+          (calendarDay) => calendarDay.day === day,
+        );
+        if (
+          !entry.metadata.hasPendingWrites &&
+          data?.isStreamDay &&
+          entry.data().revealed === true
+        ) {
+          revealedStreamDays.add(day);
+        }
+      });
+
+      buildGrid(getUnlockedDay());
+      setSyncStatus("Synchronisation Firebase active.");
+
+      if (initialSnapshotReceived && isStreamerMode() && !isTestMode()) {
+        for (const day of revealedStreamDays) {
+          if (!previousReveals.has(day) && day <= getUnlockedDay()) {
+            const data = window.CALENDAR_CONTENT.find(
+              (calendarDay) => calendarDay.day === day,
+            );
+            openReveal(day, data);
+          }
+        }
+      }
+      initialSnapshotReceived = true;
+    },
+    (error) => {
+      console.error("La synchronisation Firestore a échoué.", error);
+      setSyncStatus(
+        `Synchronisation impossible : ${error.message}. Vérifie la configuration et les règles Firestore.`,
+        true,
+      );
+      buildGrid(getUnlockedDay());
+    },
+  );
+
   createSnow(45);
   createLights(18);
-  buildGrid(getUnlockedDay());
 })();

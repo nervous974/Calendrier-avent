@@ -17,6 +17,13 @@
           <p id="calendar-subtitle">Décembre</p>
         </header>
 
+        <div id="firebase-controls" hidden>
+          <button id="firebase-sign-in" type="button">Connexion avec Google</button>
+          <button id="firebase-sign-out" type="button" hidden>Déconnexion</button>
+          <p id="firebase-auth-status" role="status"></p>
+          <p id="firebase-sync-status" role="status">Connexion à Firebase…</p>
+        </div>
+
         <div id="calendar-grid"></div>
 
         <div id="reveal-overlay" class="hidden">
@@ -39,6 +46,6 @@
     </div>
 
     <script src="content.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
   </body>
 </html>

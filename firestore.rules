@@ -1,0 +1,15 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /reveals/{day} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.auth.uid == "REPLACE_WITH_ADMIN_UID"
+        && day.matches('^(3|6|10|13|17|20|24)$')
+        && request.resource.data.keys().hasOnly(['revealed'])
+        && request.resource.data.revealed == true;
+      allow delete: if false;
+    }
+  }
+}

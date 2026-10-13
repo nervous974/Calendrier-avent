@@ -4,12 +4,8 @@
 // Pour chaque jour (1 à 24), remplis un objet avec :
 //   day          : numéro du jour (1-24), ne pas changer
 //   isStreamDay  : true si tu streames ce jour-là (affiche une étoile ✨ sur la case)
-//   revealed     : uniquement pour les jours de stream (isStreamDay: true).
-//                  Reste sur "false" tant que tu n'as pas ouvert la case en live.
-//                  Une fois ouverte pendant le stream, passe-la à "true" et fais un
-//                  git push pour que la case s'ouvre aussi sur le site public.
-//                  (Sur ton propre overlay OBS, utilise l'URL avec "?streamer=1"
-//                  pour pouvoir l'ouvrir en live sans attendre ce flag.)
+//   L'état révélé des jours de stream est synchronisé avec Firestore.
+//   Utilise l'URL avec "?streamer=1&admin=1" pour ouvrir une case en tant qu'admin.
 //   title        : titre affiché quand on ouvre la case
 //   type         : "text" | "image" | "video" | "link"
 //   text         : texte/message (utilisé pour type "text", ou en complément des autres)
@@ -21,7 +17,7 @@
 // à côté de ce fichier, puis référencés ici en "media/nom-du-fichier.png".
 // ============================================================================
 
-const CALENDAR_CONTENT = [
+window.CALENDAR_CONTENT = [
   {
     day: 1,
     isStreamDay: false,
@@ -39,7 +35,6 @@ const CALENDAR_CONTENT = [
   {
     day: 3,
     isStreamDay: true,
-    revealed: false,
     title: "Soir de stream !",
     type: "text",
     text: "Gros stream ce soir, viens nombreux 🎉",
@@ -61,7 +56,6 @@ const CALENDAR_CONTENT = [
   {
     day: 6,
     isStreamDay: true,
-    revealed: false,
     title: "Soir de stream !",
     type: "text",
     text: "À compléter.",
@@ -90,7 +84,6 @@ const CALENDAR_CONTENT = [
   {
     day: 10,
     isStreamDay: true,
-    revealed: false,
     title: "Soir de stream !",
     type: "text",
     text: "À compléter.",
@@ -112,7 +105,6 @@ const CALENDAR_CONTENT = [
   {
     day: 13,
     isStreamDay: true,
-    revealed: false,
     title: "Soir de stream !",
     type: "text",
     text: "À compléter.",
@@ -141,7 +133,6 @@ const CALENDAR_CONTENT = [
   {
     day: 17,
     isStreamDay: true,
-    revealed: false,
     title: "Soir de stream !",
     type: "text",
     text: "À compléter.",
@@ -163,7 +154,6 @@ const CALENDAR_CONTENT = [
   {
     day: 20,
     isStreamDay: true,
-    revealed: false,
     title: "Soir de stream !",
     type: "text",
     text: "À compléter.",
@@ -192,7 +182,6 @@ const CALENDAR_CONTENT = [
   {
     day: 24,
     isStreamDay: true,
-    revealed: false,
     title: "Joyeux Noël !",
     type: "text",
     text: "Merci d'avoir suivi ce calendrier de l'avent, joyeuses fêtes ! 🎅",
