@@ -367,7 +367,7 @@ import { firebaseConfig } from "./firebase-config.js";
       buildGrid(getUnlockedDay());
       setSyncStatus("Synchronisation Firebase active.");
 
-      if (initialSnapshotReceived && isStreamerMode() && !isTestMode()) {
+      if (initialSnapshotReceived && isStreamerMode() && !isAdminMode()) {
         for (const day of revealedStreamDays) {
           if (!previousReveals.has(day) && day <= getUnlockedDay()) {
             const data = window.CALENDAR_CONTENT.find(

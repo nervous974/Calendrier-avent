@@ -53,6 +53,7 @@ file:///D:/Chaine%20stream/Application%20twitch/Calendrier%20de%20l'avent/index.
 ```
 
 Cela débloque toutes les cases jusqu'au jour 12 inclus, peu importe la vraie date.
+Pour tester la synchronisation en octobre, utilise temporairement `?day=12&streamer=1` dans OBS et crée le document temporaire `reveals/3` dans Firestore (voir [la procédure détaillée](NOTE-UTILISATION.md#tester-la-synchronisation-avant-decembre)). Supprime-le après le test.
 
 ## Ajouter l'overlay dans OBS
 

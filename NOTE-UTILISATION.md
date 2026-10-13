@@ -81,6 +81,19 @@ La valeur simulée est limitée entre 0 et 24. Sans `streamer=1`, les jours de s
 
 Le paramètre `?streamer=1` ne débloque pas les jours futurs : il contourne uniquement l’attente de révélation pour les jours de stream. Pour faire un essai avant la date prévue, combine-le avec `?day=X`; ce mode de test n’écrit pas dans Firestore.
 
+## Tester la synchronisation avant décembre
+
+Ce test utilise temporairement le jour de stream 3, sans changer son contenu. Garde la session admin connectée, utilise les adresses de test ci-dessous et supprime le document temporaire à la fin.
+
+1. Dans OBS, configure provisoirement la source Navigateur avec `https://nervous974.github.io/Calendrier-avent/?day=12&streamer=1`.
+2. Ouvre la page de test viewer `https://nervous974.github.io/Calendrier-avent/?day=12` dans une autre fenêtre ou demande à un ami de l’ouvrir. Le viewer ne doit pas se connecter.
+3. Dans Firebase Console → Firestore Database → **Data / Données**, ouvre la collection `reveals`. Si elle n’existe pas, crée-la avec un premier document.
+4. Crée un document dont l’identifiant est `3`, avec le seul champ `revealed`, de type booléen, valeur `true`.
+5. Vérifie que la case 3 devient un cadeau cliquable chez le viewer et que l’animation d’ouverture se déclenche dans OBS. L’admin et la page OBS doivent être rechargés après le déploiement de la version permettant ce test.
+6. Supprime le document `3` de `reveals` après le test. Le viewer verra alors la case repasser en attente. Remets ensuite l’URL OBS normale, sans `day=12`.
+
+La console Firebase effectue cette création manuelle avec les droits de propriétaire du projet. L’application publique, elle, n’autorise que ton utilisateur authentifié à écrire les révélations via ses règles Firestore. N’utilise pas ce test pour publier une vraie révélation.
+
 ## Préparer l’accès Firebase (une seule fois)
 
 La base Firestore doit être créée en édition Standard, région Paris (`europe-west9`) si choisie, sans sauvegardes planifiées. L’authentification Google doit être activée dans Firebase Authentication.
