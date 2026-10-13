@@ -22,11 +22,46 @@ import { firebaseConfig } from "./firebase-config.js";
 
 (function () {
   const TOTAL_DAYS = 24;
+  const OPENED_GIFT_ICON =
+    '<svg class="opened-gift-icon" viewBox="0 0 32 32" aria-hidden="true"><path fill="#b0282c" stroke="#ffd54a" stroke-width="1.5" d="M6 13h20v15H6z"/><path fill="#ffd54a" d="M14 13h4v15h-4z"/><path fill="#b0282c" stroke="#ffd54a" stroke-width="1.5" d="M5 9 24 4l2 5-19 5z"/><path fill="none" stroke="#ffd54a" stroke-width="1.5" d="M14 10C8 9 7 5 10 4c3-1 5 2 6 5 2-4 6-6 8-3 2 3-2 6-7 6"/></svg>';
   const firebaseApp = initializeApp(firebaseConfig);
   const auth = getAuth(firebaseApp);
   const db = getFirestore(firebaseApp);
   const revealedStreamDays = new Set();
+  const streamerOpenedDays = new Set();
+  const locallyOpenedDays = loadLocallyOpenedDays();
   let currentUser = null;
+
+  function loadLocallyOpenedDays() {
+    try {
+      const storedDays = JSON.parse(
+        window.localStorage.getItem("calendar-opened-days") || "[]",
+      );
+      return new Set(
+        Array.isArray(storedDays)
+          ? storedDays.filter(
+              (day) =>
+                Number.isInteger(day) && day >= 1 && day <= TOTAL_DAYS,
+            )
+          : [],
+      );
+    } catch (error) {
+      console.error("Impossible de charger les cases ouvertes localement.", error);
+      return new Set();
+    }
+  }
+
+  function markDayOpened(day) {
+    locallyOpenedDays.add(day);
+    try {
+      window.localStorage.setItem(
+        "calendar-opened-days",
+        JSON.stringify([...locallyOpenedDays]),
+      );
+    } catch (error) {
+      console.error("Impossible de mémoriser la case ouverte sur ce navigateur.", error);
+    }
+  }
 
   function createSnow(flakeCount) {
     const container = document.getElementById("snow-container");
@@ -109,12 +144,18 @@ import { firebaseConfig } from "./firebase-config.js";
       const isWaitingForLive =
         data.isStreamDay && !revealedStreamDays.has(day) && !streamerMode;
       const isUnlocked = isDateUnlocked && !isWaitingForLive;
+      const isOpened =
+        locallyOpenedDays.has(day) ||
+        (streamerMode && streamerOpenedDays.has(day));
 
       const cell = document.createElement("button");
       cell.className = "day-cell" + (isUnlocked ? " unlocked" : " locked");
       cell.type = "button";
       cell.disabled = !isUnlocked;
-      cell.setAttribute("aria-label", `Jour ${day}`);
+      cell.setAttribute(
+        "aria-label",
+        `Jour ${day}${isOpened ? ", cadeau déjà ouvert" : ""}`,
+      );
 
       if (data.isStreamDay) {
         cell.classList.add("stream-day");
@@ -122,7 +163,7 @@ import { firebaseConfig } from "./firebase-config.js";
 
       let icon = "🔒";
       if (isUnlocked) {
-        icon = "🎁";
+        icon = isOpened ? OPENED_GIFT_ICON : "🎁";
       } else if (isDateUnlocked && isWaitingForLive) {
         icon = "⏳"; // date passée, en attente de l'ouverture en direct
       }
@@ -145,9 +186,15 @@ import { firebaseConfig } from "./firebase-config.js";
     if (
       data.isStreamDay &&
       isAdminMode() &&
-      !isTestMode() &&
-      !revealedStreamDays.has(day)
+      !isTestMode()
     ) {
+      if (streamerOpenedDays.has(day)) {
+        markDayOpened(day);
+        buildGrid(getUnlockedDay());
+        openReveal(day, data);
+        return;
+      }
+
       if (!currentUser) {
         document.getElementById("firebase-auth-status").textContent =
           "Connecte-toi avec Google avant de révéler une case.";
@@ -156,7 +203,15 @@ import { firebaseConfig } from "./firebase-config.js";
 
       setSyncStatus(`Publication de la case ${day}…`);
       try {
-        await setDoc(doc(db, "reveals", String(day)), { revealed: true });
+        await setDoc(
+          doc(db, "reveals", String(day)),
+          { revealed: true, streamerOpened: true },
+          { merge: true },
+        );
+        markDayOpened(day);
+        buildGrid(getUnlockedDay());
+        openReveal(day, data);
+        setSyncStatus(`Case ${day} ouverte et synchronisée avec OBS.`);
       } catch (error) {
         console.error("Impossible de publier la case dans Firestore.", error);
         setSyncStatus(
@@ -167,6 +222,8 @@ import { firebaseConfig } from "./firebase-config.js";
       return;
     }
 
+    markDayOpened(day);
+    buildGrid(getUnlockedDay());
     openReveal(day, data);
   }
 
@@ -348,8 +405,9 @@ import { firebaseConfig } from "./firebase-config.js";
     collection(db, "reveals"),
     { includeMetadataChanges: true },
     (snapshot) => {
-      const previousReveals = new Set(revealedStreamDays);
+      const previousStreamerOpened = new Set(streamerOpenedDays);
       revealedStreamDays.clear();
+      streamerOpenedDays.clear();
       snapshot.forEach((entry) => {
         const day = Number(entry.id);
         const data = window.CALENDAR_CONTENT.find(
@@ -361,6 +419,9 @@ import { firebaseConfig } from "./firebase-config.js";
           entry.data().revealed === true
         ) {
           revealedStreamDays.add(day);
+          if (entry.data().streamerOpened === true) {
+            streamerOpenedDays.add(day);
+          }
         }
       });
 
@@ -368,11 +429,12 @@ import { firebaseConfig } from "./firebase-config.js";
       setSyncStatus("Synchronisation Firebase active.");
 
       if (initialSnapshotReceived && isStreamerMode() && !isAdminMode()) {
-        for (const day of revealedStreamDays) {
-          if (!previousReveals.has(day) && day <= getUnlockedDay()) {
+        for (const day of streamerOpenedDays) {
+          if (!previousStreamerOpened.has(day) && day <= getUnlockedDay()) {
             const data = window.CALENDAR_CONTENT.find(
               (calendarDay) => calendarDay.day === day,
             );
+            markDayOpened(day);
             openReveal(day, data);
           }
         }

@@ -209,6 +209,12 @@ body {
   font-size: 1.4rem;
 }
 
+.opened-gift-icon {
+  width: 1.7rem;
+  height: 1.7rem;
+  overflow: visible;
+}
+
 .stream-star {
   position: absolute;
   top: 4px;

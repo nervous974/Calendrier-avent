@@ -12,6 +12,7 @@ Pour le guide détaillé de préparation, de test, d’utilisation dans OBS et d
 - Pour ces jours de stream, la case reste en attente (⏳) sur le **site public** tant qu'elle n'a pas été révélée dans Firebase.
 - Le contenu (texte, image, vidéo, lien) est **entièrement séparé du code** : tu édites uniquement `content.js`.
 - Les cases révélées sont synchronisées en temps réel avec Firebase Firestore; aucun `git push` n'est nécessaire pour les révéler.
+- Après son propre clic, un viewer voit le cadeau ouvert dans son navigateur. Le clic de l'admin synchronise également l'icône ouverte dans OBS, sans afficher cet état chez les autres viewers.
 
 ## Configuration Firebase requise
 
@@ -25,7 +26,7 @@ Pour autoriser uniquement ton compte à révéler les cases :
 4. Dans `firestore.rules`, remplace `REPLACE_WITH_ADMIN_UID` par cet UID.
 5. Dans **Firestore Database → Rules**, colle le contenu modifié de `firestore.rules`, puis clique sur **Publier**.
 
-Les règles autorisent la lecture publique des états, mais les écritures sont réservées à cet UID et aux jours de stream listés dans les règles. Si tu modifies ces jours dans `content.js`, ajuste aussi l'expression régulière dans `firestore.rules`. Ne publie jamais de mot de passe ni de clé privée. La configuration web Firebase de `firebase-config.js` est publique; la sécurité dépend des règles Firestore.
+Les règles autorisent la lecture publique des états, mais les écritures sont réservées à cet UID et aux jours de stream listés dans les règles. Si tu modifies ces jours dans `content.js`, ajuste aussi l'expression régulière dans `firestore.rules`. Les règles autorisent `revealed: true` et, après le clic de l'admin, `streamerOpened: true`. Ne publie jamais de mot de passe ni de clé privée. La configuration web Firebase de `firebase-config.js` est publique; la sécurité dépend des règles Firestore.
 
 ## Comment éditer le contenu
 

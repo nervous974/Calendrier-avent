@@ -21,7 +21,9 @@ Cette note explique comment préparer le calendrier, le tester, l’utiliser dan
 - Sur le site public, un jour de stream déjà arrivé mais pas encore publié comme révélé affiche un sablier ⏳ et reste inaccessible.
 - Dans OBS, le paramètre `?streamer=1` affiche les jours de stream et reçoit leur état en direct depuis Firestore.
 - Pour révéler une case, utilise la page d’administration avec `?streamer=1&admin=1`, connectée avec ton compte Google Firebase.
-- Le site public reçoit les mises à jour directement de Firestore; aucun clic dans le code ni publication Git n’est nécessaire pour révéler une case.
+- Le clic admin enregistre `revealed: true` et `streamerOpened: true`. Cette dernière valeur fait afficher le cadeau ouvert et jouer l’animation dans OBS, mais l’icône « ouvert » est réservée à l’overlay et n’est pas affichée chez les viewers.
+- Chaque viewer voit le cadeau ouvert uniquement après son propre clic. Cet état est gardé localement dans son navigateur; il n’est ni partagé avec les autres visiteurs ni synchronisé entre ses appareils.
+- Le site public reçoit les mises à jour de disponibilité directement de Firestore; aucun clic dans le code ni publication Git n’est nécessaire pour révéler une case.
 
 L’état est recalculé au chargement de la page. Si une modification n’apparaît pas, actualise la page ou recharge la source Navigateur d’OBS.
 
@@ -88,8 +90,8 @@ Ce test utilise temporairement le jour de stream 3, sans changer son contenu. Ga
 1. Dans OBS, configure provisoirement la source Navigateur avec `https://nervous974.github.io/Calendrier-avent/?day=12&streamer=1`.
 2. Ouvre la page de test viewer `https://nervous974.github.io/Calendrier-avent/?day=12` dans une autre fenêtre ou demande à un ami de l’ouvrir. Le viewer ne doit pas se connecter.
 3. Dans Firebase Console → Firestore Database → **Data / Données**, ouvre la collection `reveals`. Si elle n’existe pas, crée-la avec un premier document.
-4. Crée un document dont l’identifiant est `3`, avec le seul champ `revealed`, de type booléen, valeur `true`.
-5. Vérifie que la case 3 devient un cadeau cliquable chez le viewer et que l’animation d’ouverture se déclenche dans OBS. L’admin et la page OBS doivent être rechargés après le déploiement de la version permettant ce test.
+4. Crée un document dont l’identifiant est `3`, avec les champs `revealed` et `streamerOpened`, tous deux de type booléen et de valeur `true`.
+5. Vérifie que la case 3 devient un cadeau cliquable chez le viewer et que l’animation d’ouverture se déclenche dans OBS. OBS doit afficher le cadeau ouvert; le viewer garde son cadeau fermé jusqu’à son propre clic. Les pages OBS et viewer doivent être rechargées après le déploiement de la version permettant ce test.
 6. Supprime le document `3` de `reveals` après le test. Le viewer verra alors la case repasser en attente. Remets ensuite l’URL OBS normale, sans `day=12`.
 
 La console Firebase effectue cette création manuelle avec les droits de propriétaire du projet. L’application publique, elle, n’autorise que ton utilisateur authentifié à écrire les révélations via ses règles Firestore. N’utilise pas ce test pour publier une vraie révélation.
@@ -106,7 +108,7 @@ La base Firestore doit être créée en édition Standard, région Paris (`europ
 6. Dans Firebase Firestore Database → **Rules / Règles**, colle le contenu mis à jour de `firestore.rules` et clique **Publier**. Tant que les règles de production ne sont pas publiées, l’erreur « Missing or insufficient permissions » est normale.
 7. Recharge la page d’administration. Elle doit indiquer que la synchronisation Firebase est active.
 
-Les règles fournies laissent la lecture des états publique, mais limitent les écritures à ton UID et aux jours de stream `3, 6, 10, 13, 17, 20, 24`. Si tu changes les jours de stream dans `content.js`, adapte aussi la liste autorisée dans `firestore.rules`. Garde le mode production et ne publie jamais de mot de passe ou de clé privée. La configuration web de `firebase-config.js` est publique par conception; les règles Firestore font le contrôle d’accès.
+Les règles fournies laissent la lecture des états publique, mais limitent les écritures à ton UID et aux jours de stream `3, 6, 10, 13, 17, 20, 24`. Les écritures autorisées contiennent `revealed: true` et peuvent aussi contenir `streamerOpened: true`. Si tu changes les jours de stream dans `content.js`, adapte aussi la liste autorisée dans `firestore.rules`. Garde le mode production et ne publie jamais de mot de passe ou de clé privée. La configuration web de `firebase-config.js` est publique par conception; les règles Firestore font le contrôle d’accès.
 
 ## Révéler une case pendant le live
 
