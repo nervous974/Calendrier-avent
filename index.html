@@ -45,7 +45,13 @@
       </div>
     </div>
 
-    <script src="content.js"></script>
-    <script type="module" src="script.js"></script>
+    <script src="content.js?v=20261013-2"></script>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("streamer") === "1" && params.get("admin") === "1") {
+        document.getElementById("firebase-controls").hidden = false;
+      }
+    </script>
+    <script type="module" src="script.js?v=20261013-2"></script>
   </body>
 </html>
